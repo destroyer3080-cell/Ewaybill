@@ -1,0 +1,7 @@
+.env
+ewb.db
+ewb.db-journal
+nic_public_key.pem
+__pycache__/
+*.pyc
+data/

@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EWB Control Tower</title>
+<style>
+  :root {
+    --bg: #0f1216; --panel: #171b21; --panel2: #1e232b; --border: #2a3038;
+    --text: #e6e9ef; --muted: #8b93a1; --accent: #4f8cff;
+    --red: #e5484d; --amber: #f5a623; --yellow: #e0c341; --green: #3ecf8e;
+    --grey: #5c6370;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px; border-bottom: 1px solid var(--border); background: var(--panel);
+  }
+  header h1 { font-size: 18px; margin: 0; }
+  header .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .tabs { display: flex; gap: 4px; padding: 10px 24px 0; background: var(--panel); }
+  .tab {
+    padding: 8px 16px; border: 1px solid var(--border); border-bottom: none;
+    border-radius: 8px 8px 0 0; background: var(--panel2); color: var(--muted);
+    cursor: pointer; font-size: 13px;
+  }
+  .tab.active { background: var(--bg); color: var(--text); font-weight: 600; }
+  main { padding: 20px 24px 60px; max-width: 1200px; margin: 0 auto; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .auto-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .switch { position: relative; width: 40px; height: 22px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; inset: 0; background: var(--grey); border-radius: 22px;
+    cursor: pointer; transition: .2s;
+  }
+  .slider::before {
+    content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px;
+    background: white; border-radius: 50%; transition: .2s;
+  }
+  .switch input:checked + .slider { background: var(--green); }
+  .switch input:checked + .slider::before { transform: translateX(18px); }
+
+  .buckets { display: flex; flex-direction: column; gap: 18px; }
+  .bucket h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+    display: flex; align-items: center; gap: 8px; margin: 0 0 8px;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .count { color: var(--muted); font-weight: 400; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+  .card {
+    background: var(--panel2); border: 1px solid var(--border); border-left: 4px solid var(--grey);
+    border-radius: 8px; padding: 10px 12px; font-size: 13px;
+  }
+  .card .row1 { display: flex; justify-content: space-between; font-weight: 600; }
+  .card .route { color: var(--muted); margin-top: 2px; }
+  .card .meta { color: var(--muted); margin-top: 6px; font-size: 12px; display: flex; justify-content: space-between; }
+  .card button {
+    margin-top: 8px; width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--text); cursor: pointer; font-size: 12px;
+  }
+  .card button:hover { border-color: var(--accent); }
+
+  .card.MISSED { border-left-color: var(--grey); }
+  .card.WINDOW { border-left-color: var(--red); }
+  .card.SOON { border-left-color: var(--amber); }
+  .card.WATCH { border-left-color: var(--yellow); }
+  .card.OK { border-left-color: var(--green); }
+  .card.CLOSED { border-left-color: var(--border); opacity: .6; }
+
+  .empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
+
+  .panel {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px; margin-bottom: 18px;
+  }
+  .panel h3 { margin-top: 0; font-size: 14px; }
+  .search-row { display: flex; gap: 8px; }
+  .search-row input { flex: 1; }
+  input, textarea {
+    background: var(--panel2); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 10px; border-radius: 6px; font-size: 13px;
+  }
+  .btn {
+    background: var(--accent); color: white; border: none; padding: 8px 16px;
+    border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;
+  }
+  .btn:hover { opacity: .9; }
+  .btn.secondary { background: var(--panel2); border: 1px solid var(--border); color: var(--text); }
+
+  .warning {
+    background: #3a2a12; border: 1px solid var(--amber); color: #ffd591;
+    border-radius: 8px; padding: 10px 12px; font-size: 12px; margin: 14px 0;
+  }
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .field-grid label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .field-grid input { width: 100%; }
+  .field-grid .full { grid-column: 1 / -1; }
+
+  .result-msg { margin-top: 14px; padding: 10px 12px; border-radius: 8px; font-size: 13px; }
+  .result-msg.ok { background: #123a2b; border: 1px solid var(--green); color: #9ff0cd; }
+  .result-msg.err { background: #3a1414; border: 1px solid var(--red); color: #ffb3b3; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; }
+  td.detail { max-width: 480px; word-break: break-word; color: var(--muted); font-family: monospace; font-size: 11px; }
+  .mode-badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .mode-badge.MANUAL { background: #1c2c44; color: #8ab4ff; }
+  .mode-badge.AUTO { background: #2a1c44; color: #c79bff; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>EWB Control Tower</h1>
+    <div class="sub">E-way bill expiry monitoring &amp; extension</div>
+  </div>
+  <div class="auto-toggle">
+    <span>Auto-extend</span>
+    <label class="switch">
+      <input type="checkbox" id="autoToggle">
+      <span class="slider"></span>
+    </label>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-view="dashboard">Dashboard</div>
+  <div class="tab" data-view="test">Test / Ops</div>
+  <div class="tab" data-view="logs">Audit Log</div>
+</div>
+
+<main>
+
+  <section id="view-dashboard" class="view active">
+    <div class="buckets" id="buckets"></div>
+  </section>
+
+  <section id="view-test" class="view">
+    <div class="panel">
+      <h3>Lookup</h3>
+      <div class="search-row">
+        <input id="lookupQ" placeholder="Invoice no or EWB no (e.g. INV-1002)">
+        <button class="btn" id="lookupBtn">Lookup</button>
+      </div>
+    </div>
+
+    <div class="panel" id="extendPanel" style="display:none;">
+      <h3 id="extendTitle">Shipment</h3>
+      <div id="extendSummary" style="font-size:13px;color:var(--muted);"></div>
+
+      <div class="warning">
+        <strong>No-GPS policy:</strong> we have no live vehicle GPS feed. Location,
+        pincode and remaining distance below default to the shipment's FROM
+        ship-point and full route distance (reason code 99 &mdash; "Transit delay").
+        These are DEFAULTS ONLY &mdash; always correct them to the vehicle's actual
+        current position before extending if it has left origin. Declaring the
+        origin as current location while the truck is mid-route is a
+        misdeclaration risk.
+      </div>
+
+      <div class="field-grid">
+        <div><label>Current place</label><input id="fPlace"></div>
+        <div><label>Current pincode</label><input id="fPin"></div>
+        <div><label>Remaining distance (km)</label><input id="fKm" type="number" min="1"></div>
+        <div><label>Remarks</label><input id="fRemarks"></div>
+      </div>
+
+      <div style="margin-top:14px; display:flex; gap:8px;">
+        <button class="btn" id="extendBtn">Extend validity</button>
+        <button class="btn secondary" id="iodOpenBtn">Mark IOD OPEN</button>
+        <button class="btn secondary" id="iodClosedBtn">Mark IOD CLOSED</button>
+      </div>
+
+      <div id="resultMsg"></div>
+    </div>
+  </section>
+
+  <section id="view-logs" class="view">
+    <div class="panel">
+      <h3>Audit trail</h3>
+      <table>
+        <thead><tr><th>When</th><th>Mode</th><th>Invoice</th><th>EWB</th><th>Detail</th></tr></thead>
+        <tbody id="logsBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<script>
+const BUCKETS = [
+  {key: "WINDOW", label: "Extend now (in window)", color: "var(--red)"},
+  {key: "SOON",   label: "Soon (≤24h)",         color: "var(--amber)"},
+  {key: "WATCH",  label: "Watch (≤48h)",         color: "var(--yellow)"},
+  {key: "MISSED", label: "Missed — fresh EWB needed", color: "var(--grey)"},
+  {key: "OK",     label: "OK",                    color: "var(--green)"},
+  {key: "CLOSED", label: "Closed (IOD done)",      color: "var(--border)"},
+];
+
+let currentShipment = null;
+
+function fmtTs(ts) {
+  if (!ts) return "—";
+  return new Date(ts * 1000).toLocaleString();
+}
+
+function fmtCountdown(expiryTs, now) {
+  const diff = expiryTs - now;
+  const abs = Math.abs(diff);
+  const h = Math.floor(abs / 3600);
+  const m = Math.floor((abs % 3600) / 60);
+  return (diff < 0 ? "-" : "") + h + "h " + m + "m";
+}
+
+async function loadShipments() {
+  const res = await fetch("/api/shipments");
+  const data = await res.json();
+  document.getElementById("autoToggle").checked = data.auto_extend;
+
+  const byBucket = {};
+  BUCKETS.forEach(b => byBucket[b.key] = []);
+  data.shipments.forEach(s => { (byBucket[s.status] ||= []).push(s); });
+
+  const container = document.getElementById("buckets");
+  container.innerHTML = "";
+  BUCKETS.forEach(b => {
+    const items = byBucket[b.key] || [];
+    const bucketEl = document.createElement("div");
+    bucketEl.className = "bucket";
+    bucketEl.innerHTML = `<h2><span class="dot" style="background:${b.color}"></span>${b.label} <span class="count">(${items.length})</span></h2>`;
+    const cardsEl = document.createElement("div");
+    cardsEl.className = "cards";
+    if (items.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "None";
+      bucketEl.appendChild(empty);
+    } else {
+      items.forEach(s => {
+        const card = document.createElement("div");
+        card.className = "card " + s.status;
+        card.innerHTML = `
+          <div class="row1"><span>${s.invoice_no}</span><span>${s.status}</span></div>
+          <div class="route">${s.from_place} &rarr; ${s.to_place}</div>
+          <div class="meta"><span>EWB ${s.ewb_no}</span><span>${s.vehicle_no}</span></div>
+          <div class="meta"><span>Expiry: ${fmtTs(s.expiry_ts)}</span><span>${fmtCountdown(s.expiry_ts, data.now)}</span></div>
+          <div class="meta"><span>Extensions: ${s.extensions}</span><span>IOD: ${s.iod_status}</span></div>
+        `;
+        const btn = document.createElement("button");
+        btn.textContent = "Open in Test / Ops";
+        btn.onclick = () => {
+          switchView("test");
+          document.getElementById("lookupQ").value = s.invoice_no;
+          runLookup();
+        };
+        card.appendChild(btn);
+        cardsEl.appendChild(card);
+      });
+      bucketEl.appendChild(cardsEl);
+    }
+    container.appendChild(bucketEl);
+  });
+}
+
+async function runLookup() {
+  const q = document.getElementById("lookupQ").value.trim();
+  if (!q) return;
+  const res = await fetch("/api/lookup?q=" + encodeURIComponent(q));
+  const data = await res.json();
+  const panel = document.getElementById("extendPanel");
+  document.getElementById("resultMsg").innerHTML = "";
+  if (!data.ok) {
+    panel.style.display = "none";
+    alert(data.message || "Not found");
+    return;
+  }
+  currentShipment = data.shipment;
+  panel.style.display = "block";
+  document.getElementById("extendTitle").textContent =
+    `${data.shipment.invoice_no} — EWB ${data.shipment.ewb_no} [${data.status}]`;
+  document.getElementById("extendSummary").textContent =
+    `${data.shipment.from_place} → ${data.shipment.to_place} · ${data.shipment.distance_km} km · ` +
+    `valid upto ${fmtTs(data.shipment.expiry_ts)} · vehicle ${data.shipment.vehicle_no} · IOD ${data.shipment.iod_status}`;
+
+  document.getElementById("fPlace").value = data.shipment.from_place;
+  document.getElementById("fPin").value = data.shipment.from_pincode;
+  document.getElementById("fKm").value = data.shipment.distance_km;
+  document.getElementById("fRemarks").value = "Transit delay";
+}
+
+async function runExtend() {
+  if (!currentShipment) return;
+  const body = {
+    q: currentShipment.invoice_no,
+    place: document.getElementById("fPlace").value,
+    pin: document.getElementById("fPin").value,
+    remaining_km: parseFloat(document.getElementById("fKm").value),
+    remarks: document.getElementById("fRemarks").value,
+  };
+  const res = await fetch("/api/extend", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  const msgEl = document.getElementById("resultMsg");
+  msgEl.className = "result-msg " + (data.ok ? "ok" : "err");
+  msgEl.textContent = data.message + (data.ok ? ` — new validity: ${fmtTs(data.shipment.expiry_ts)}` : "");
+  if (data.ok) {
+    currentShipment = data.shipment;
+    document.getElementById("extendTitle").textContent =
+      `${data.shipment.invoice_no} — EWB ${data.shipment.ewb_no} [${data.status}]`;
+  }
+  loadShipments();
+}
+
+async function setIod(status) {
+  if (!currentShipment) return;
+  await fetch("/api/iod", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({invoice_no: currentShipment.invoice_no, status}),
+  });
+  runLookup();
+  loadShipments();
+}
+
+async function loadLogs() {
+  const res = await fetch("/api/logs");
+  const data = await res.json();
+  const body = document.getElementById("logsBody");
+  body.innerHTML = "";
+  data.logs.forEach(l => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${fmtTs(l.ts)}</td>
+      <td><span class="mode-badge ${l.mode}">${l.mode}</span></td>
+      <td>${l.invoice_no || ""}</td>
+      <td>${l.ewb_no || ""}</td>
+      <td class="detail">${l.detail || ""}</td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+function switchView(name) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.view === name));
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === "view-" + name));
+  if (name === "logs") loadLogs();
+  if (name === "dashboard") loadShipments();
+}
+
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => switchView(t.dataset.view));
+document.getElementById("lookupBtn").onclick = runLookup;
+document.getElementById("lookupQ").addEventListener("keydown", e => { if (e.key === "Enter") runLookup(); });
+document.getElementById("extendBtn").onclick = runExtend;
+document.getElementById("iodOpenBtn").onclick = () => setIod("OPEN");
+document.getElementById("iodClosedBtn").onclick = () => setIod("CLOSED");
+document.getElementById("autoToggle").onchange = async (e) => {
+  await fetch("/api/auto", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({enabled: e.target.checked}),
+  });
+};
+
+loadShipments();
+setInterval(() => {
+  if (document.getElementById("view-dashboard").classList.contains("active")) loadShipments();
+  if (document.getElementById("view-logs").classList.contains("active")) loadLogs();
+}, 15000);
+</script>
+
+</body>
+</html>
