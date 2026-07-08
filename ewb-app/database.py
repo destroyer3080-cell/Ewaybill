@@ -121,6 +121,57 @@ def _seed_demo_data():
         conn.close()
 
 
+def upsert_shipment_from_tms(record: dict) -> str:
+    """Insert a new shipment or update its TMS-owned fields (vehicle, route,
+    distance, IOD status) on invoice_no. EWB-portal-owned fields (expiry_ts,
+    generated_ts, extensions) are never touched on an update — only
+    /api/lookup and do_extend() may change those, so a TMS sync can never
+    silently clobber an authoritative NIC validity with stale or blank data.
+
+    For a brand-new invoice_no, `record` must also carry expiry_ts and
+    generated_ts (sync_tms.py is responsible for sourcing these truthfully —
+    from the TMS record if it captured them, or a live portal lookup —
+    never fabricate them; see CLAUDE.md §7 rule 8).
+
+    Returns "inserted" or "updated".
+    """
+    conn = _connect()
+    try:
+        existing = conn.execute(
+            "SELECT id FROM shipments WHERE invoice_no = ?", (record["invoice_no"],)
+        ).fetchone()
+        if existing:
+            conn.execute(
+                """UPDATE shipments SET
+                     ewb_no = ?, vehicle_no = ?, from_place = ?, from_pincode = ?,
+                     from_state = ?, to_place = ?, to_pincode = ?, distance_km = ?,
+                     iod_status = ?
+                   WHERE invoice_no = ?""",
+                (record["ewb_no"], record["vehicle_no"], record["from_place"],
+                 record["from_pincode"], record["from_state"], record["to_place"],
+                 record["to_pincode"], record["distance_km"], record["iod_status"],
+                 record["invoice_no"]),
+            )
+            conn.commit()
+            return "updated"
+        else:
+            conn.execute(
+                """INSERT INTO shipments
+                   (invoice_no, ewb_no, vehicle_no, from_place, from_pincode,
+                    from_state, to_place, to_pincode, distance_km, iod_status,
+                    expiry_ts, generated_ts, extensions)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)""",
+                (record["invoice_no"], record["ewb_no"], record["vehicle_no"],
+                 record["from_place"], record["from_pincode"], record["from_state"],
+                 record["to_place"], record["to_pincode"], record["distance_km"],
+                 record["iod_status"], record["expiry_ts"], record["generated_ts"]),
+            )
+            conn.commit()
+            return "inserted"
+    finally:
+        conn.close()
+
+
 def get_setting(key: str, default=None):
     conn = _connect()
     try:

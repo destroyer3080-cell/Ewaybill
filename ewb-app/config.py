@@ -40,3 +40,13 @@ AUTO_REASON_REMARKS = os.getenv("AUTO_REASON_REMARKS", "Transit delay")
 APP_PORT = int(os.getenv("APP_PORT", "8000"))
 DB_PATH = os.getenv("DB_PATH", "./ewb.db")
 SEED_DEMO_DATA = _bool("SEED_DEMO_DATA", "true")
+
+# --- TMS sync job (sync_tms.py) ---
+TMS_SYNC_MODE = os.getenv("TMS_SYNC_MODE", "csv").strip().lower()  # api | csv
+TMS_API_URL = os.getenv("TMS_API_URL", "")
+TMS_API_KEY = os.getenv("TMS_API_KEY", "")
+TMS_API_TIMEOUT_SECONDS = int(os.getenv("TMS_API_TIMEOUT_SECONDS", "30"))
+TMS_CSV_WATCH_DIR = os.getenv("TMS_CSV_WATCH_DIR", "./tms_incoming")
+TMS_CSV_ARCHIVE_DIR = os.getenv("TMS_CSV_ARCHIVE_DIR", "./tms_processed")
+TMS_CSV_ERROR_DIR = os.getenv("TMS_CSV_ERROR_DIR", "./tms_errors")
+TMS_SYNC_LOCK_PATH = os.getenv("TMS_SYNC_LOCK_PATH", "./sync_tms.lock")

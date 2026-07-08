@@ -5,3 +5,7 @@ nic_public_key.pem
 __pycache__/
 *.pyc
 data/
+sync_tms.lock
+tms_incoming/
+tms_processed/
+tms_errors/

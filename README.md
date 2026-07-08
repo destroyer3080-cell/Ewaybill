@@ -50,12 +50,53 @@ ewb-app/
 ├── ewb_client.py         3 swappable API backends (mock | gsp | nic)
 ├── database.py           SQLite schema, queries, demo seed
 ├── config.py              loads .env
+├── sync_tms.py           cron-safe TMS -> shipments upsert job
 ├── templates/index.html  dashboard + test screen (no build step)
 ├── requirements.txt
 ├── Dockerfile
 ├── run_tests.sh           end-to-end curl test suite
 └── .env.example           every config option, documented
 ```
+
+## Syncing shipments from the TMS
+
+`sync_tms.py` upserts shipments from the company TMS into the local DB on
+`invoice_no`. It never touches EWB validity (`expiry_ts`/`generated_ts`) on
+an existing row — only `/api/lookup` and an extension can change that — so
+a sync run can't silently overwrite an authoritative NIC value. On a
+brand-new invoice it needs a validity to seed the row, either from the TMS
+record (`valid_upto` column) or a live portal lookup by `ewb_no`; if
+neither is available the row is skipped with a warning rather than
+fabricated.
+
+Two source modes, picked via `TMS_SYNC_MODE` in `.env` (or `--mode`):
+
+```bash
+cd ewb-app
+
+# REST API pull — TMS_API_URL returns a JSON array (or {"shipments": [...]})
+python sync_tms.py --mode api
+
+# CSV watch-dir sweep — processes every *.csv in TMS_CSV_WATCH_DIR, then
+# moves each to TMS_CSV_ARCHIVE_DIR (clean) or TMS_CSV_ERROR_DIR (any row
+# failed) so cron never reprocesses the same file
+python sync_tms.py --mode csv
+
+# one-off import of a single file, e.g. for an ops team manual upload
+python sync_tms.py --csv /path/to/export.csv
+
+# validate without writing
+python sync_tms.py --dry-run
+```
+
+CSV header: `invoice_no, ewb_no, vehicle_no, from_place, from_pincode,
+from_state, to_place, to_pincode, distance_km, iod_status, valid_upto,
+generated_at` (the last two are optional, only used on first insert).
+
+A file lock (`TMS_SYNC_LOCK_PATH`) keeps overlapping cron runs from
+stepping on each other — a second run exits immediately with code 3.
+Exit codes: `0` clean, `1` some records failed, `2` bad config, `3`
+already running.
 
 ## Going live
 
@@ -64,7 +105,7 @@ ewb-app/
    each.
 2. Edit `.env`: set `EWB_API_MODE=gsp` (or `nic`) and fill in credentials.
    Set `SEED_DEMO_DATA=false`.
-3. Point a TMS sync job at the `shipments` table (upsert on `invoice_no`).
+3. Schedule `sync_tms.py` on cron to keep `shipments` filled from the TMS.
 4. Deploy via Docker or systemd — see `CLAUDE.md` §6 for both.
 
 Full production checklist is in `CLAUDE.md` §6.
