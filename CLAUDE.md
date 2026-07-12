@@ -88,12 +88,14 @@ ewb-app/
 ├── ewb_client.py        3 swappable API backends (mock | gsp | nic)
 ├── database.py          SQLite schema, queries, demo seed
 ├── config.py            loads .env
+├── sync_tms.py          cron-safe TMS -> shipments upsert job (see §8 roadmap item 1)
 ├── templates/index.html dashboard + test screen (no build step, no framework)
 ├── requirements.txt
 ├── Dockerfile
 ├── run_tests.sh         end-to-end curl test suite
 ├── .env.example         every config option, documented
-└── .env                 (gitignored) real credentials — NEVER commit
+├── .env                 (gitignored) real credentials — NEVER commit
+└── .claude/skills/run-ewb-app/   agent-driven launch/smoke-test/screenshot (driver.sh + SKILL.md)
 ```
 
 ### Status engine (single source of truth, in `app.py`; UI mirrors it)
@@ -272,7 +274,7 @@ Put nginx/caddy in front for TLS if exposed beyond the office LAN.
    no-GPS defaults is not.
 
 ## 8. Roadmap (build in this order when asked)
-1. TMS sync job (`sync_tms.py`): cron-safe upsert from company DB → shipments.
+1. ~~TMS sync job (`sync_tms.py`): cron-safe upsert from company DB → shipments.~~ DONE.
 2. Alerts: WhatsApp/SMS (Twilio/Gupshup) at T-24h, T-8h (window open), and on
    AUTO failure — failure alerts are critical, silence = penalty risk.
 3. "Get EWB assigned to transporter" pull (by date+state) to auto-discover
@@ -282,3 +284,7 @@ Put nginx/caddy in front for TLS if exposed beyond the office LAN.
 6. GPS ingestion — when a telematics feed arrives, replace the origin-default
    with last-known position and auto-compute remaining distance (haversine to
    destination pincode). The no-GPS defaults then become the fallback only.
+
+Current build status, what's live vs. still mock-only, and open items are
+tracked in [`STATUS.md`](./STATUS.md) — keep it in sync when roadmap items
+land.

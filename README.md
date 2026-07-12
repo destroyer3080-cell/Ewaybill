@@ -55,8 +55,22 @@ ewb-app/
 ├── requirements.txt
 ├── Dockerfile
 ├── run_tests.sh           end-to-end curl test suite
-└── .env.example           every config option, documented
+├── .env.example           every config option, documented
+└── .claude/skills/run-ewb-app/   driver.sh + SKILL.md — launch/smoke-test/screenshot for agent use
 ```
+
+## Running via the agent skill
+
+For agent-driven runs (start server, curl-smoke the core API flows, capture
+a dashboard screenshot) without touching the human quick-start above:
+
+```bash
+cd ewb-app
+.claude/skills/run-ewb-app/driver.sh all
+```
+
+See [`ewb-app/.claude/skills/run-ewb-app/SKILL.md`](./ewb-app/.claude/skills/run-ewb-app/SKILL.md)
+for the individual `start` / `smoke` / `screenshot` / `stop` steps.
 
 ## Syncing shipments from the TMS
 
