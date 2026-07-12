@@ -1,382 +1,342 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>EWB Control Tower</title>
 <style>
-  :root {
-    --bg: #0f1216; --panel: #171b21; --panel2: #1e232b; --border: #2a3038;
-    --text: #e6e9ef; --muted: #8b93a1; --accent: #4f8cff;
-    --red: #e5484d; --amber: #f5a623; --yellow: #e0c341; --green: #3ecf8e;
-    --grey: #5c6370;
+  :root{
+    --bg:#0D1320; --panel:#151D2E; --panel2:#1B2538; --line:#26334B;
+    --text:#E9EEF6; --mut:#8C99AF; --dim:#5B6880;
+    --red:#FF5D5D; --amber:#FFB02E; --green:#3DDC97; --blue:#5B8DEF;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
   }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg); color: var(--text);
-  }
-  header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 24px; border-bottom: 1px solid var(--border); background: var(--panel);
-  }
-  header h1 { font-size: 18px; margin: 0; }
-  header .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
-  .tabs { display: flex; gap: 4px; padding: 10px 24px 0; background: var(--panel); }
-  .tab {
-    padding: 8px 16px; border: 1px solid var(--border); border-bottom: none;
-    border-radius: 8px 8px 0 0; background: var(--panel2); color: var(--muted);
-    cursor: pointer; font-size: 13px;
-  }
-  .tab.active { background: var(--bg); color: var(--text); font-weight: 600; }
-  main { padding: 20px 24px 60px; max-width: 1200px; margin: 0 auto; }
-  .view { display: none; }
-  .view.active { display: block; }
-
-  .auto-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-  .switch { position: relative; width: 40px; height: 22px; }
-  .switch input { opacity: 0; width: 0; height: 0; }
-  .slider {
-    position: absolute; inset: 0; background: var(--grey); border-radius: 22px;
-    cursor: pointer; transition: .2s;
-  }
-  .slider::before {
-    content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px;
-    background: white; border-radius: 50%; transition: .2s;
-  }
-  .switch input:checked + .slider { background: var(--green); }
-  .switch input:checked + .slider::before { transform: translateX(18px); }
-
-  .buckets { display: flex; flex-direction: column; gap: 18px; }
-  .bucket h2 {
-    font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
-    display: flex; align-items: center; gap: 8px; margin: 0 0 8px;
-  }
-  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-  .count { color: var(--muted); font-weight: 400; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
-  .card {
-    background: var(--panel2); border: 1px solid var(--border); border-left: 4px solid var(--grey);
-    border-radius: 8px; padding: 10px 12px; font-size: 13px;
-  }
-  .card .row1 { display: flex; justify-content: space-between; font-weight: 600; }
-  .card .route { color: var(--muted); margin-top: 2px; }
-  .card .meta { color: var(--muted); margin-top: 6px; font-size: 12px; display: flex; justify-content: space-between; }
-  .card button {
-    margin-top: 8px; width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--border);
-    background: var(--panel); color: var(--text); cursor: pointer; font-size: 12px;
-  }
-  .card button:hover { border-color: var(--accent); }
-
-  .card.MISSED { border-left-color: var(--grey); }
-  .card.WINDOW { border-left-color: var(--red); }
-  .card.SOON { border-left-color: var(--amber); }
-  .card.WATCH { border-left-color: var(--yellow); }
-  .card.OK { border-left-color: var(--green); }
-  .card.CLOSED { border-left-color: var(--border); opacity: .6; }
-
-  .empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
-
-  .panel {
-    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
-    padding: 18px; margin-bottom: 18px;
-  }
-  .panel h3 { margin-top: 0; font-size: 14px; }
-  .search-row { display: flex; gap: 8px; }
-  .search-row input { flex: 1; }
-  input, textarea {
-    background: var(--panel2); border: 1px solid var(--border); color: var(--text);
-    padding: 8px 10px; border-radius: 6px; font-size: 13px;
-  }
-  .btn {
-    background: var(--accent); color: white; border: none; padding: 8px 16px;
-    border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;
-  }
-  .btn:hover { opacity: .9; }
-  .btn.secondary { background: var(--panel2); border: 1px solid var(--border); color: var(--text); }
-
-  .warning {
-    background: #3a2a12; border: 1px solid var(--amber); color: #ffd591;
-    border-radius: 8px; padding: 10px 12px; font-size: 12px; margin: 14px 0;
-  }
-  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
-  .field-grid label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
-  .field-grid input { width: 100%; }
-  .field-grid .full { grid-column: 1 / -1; }
-
-  .result-msg { margin-top: 14px; padding: 10px 12px; border-radius: 8px; font-size: 13px; }
-  .result-msg.ok { background: #123a2b; border: 1px solid var(--green); color: #9ff0cd; }
-  .result-msg.err { background: #3a1414; border: 1px solid var(--red); color: #ffb3b3; }
-
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; }
-  td.detail { max-width: 480px; word-break: break-word; color: var(--muted); font-family: monospace; font-size: 11px; }
-  .mode-badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-  .mode-badge.MANUAL { background: #1c2c44; color: #8ab4ff; }
-  .mode-badge.AUTO { background: #2a1c44; color: #c79bff; }
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);
+    font-family:system-ui,-apple-system,'Segoe UI',sans-serif;padding-bottom:60px}
+  header{background:var(--panel);border-bottom:1px solid var(--line);padding:16px 22px;
+    display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
+  .eyebrow{font:11px var(--mono);letter-spacing:3px;color:var(--mut)}
+  h1{font-size:21px;margin:2px 0 0;letter-spacing:-.3px}
+  .stats{display:flex;gap:22px;flex-wrap:wrap;align-items:center}
+  .stat{text-align:right}
+  .stat b{display:block;font:800 19px var(--mono)}
+  .stat span{font-size:10px;letter-spacing:1px;color:var(--mut);text-transform:uppercase}
+  .wrap{padding:0 22px;max-width:1200px;margin:0 auto}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;margin-top:18px}
+  .card h2{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--mut);
+    margin:0;padding:13px 16px;border-bottom:1px solid var(--line)}
+  .pad{padding:16px}
+  input,button{font-family:inherit;font-size:13.5px;border-radius:5px}
+  input{background:var(--bg);border:1px solid var(--line);color:var(--text);padding:9px 11px;width:100%}
+  label{display:block;font-size:10.5px;letter-spacing:1.2px;color:var(--mut);
+    text-transform:uppercase;margin:0 0 4px}
+  .row{display:flex;gap:10px;flex-wrap:wrap}.row>div{flex:1;min-width:130px}
+  button{border:none;cursor:pointer;font-weight:700;padding:10px 18px}
+  .btn-blue{background:var(--blue);color:#0A1530}
+  .btn-green{background:var(--green);color:#06281A}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--mut)}
+  button:disabled{background:var(--dim);color:#222;cursor:not-allowed}
+  .chip{font:10.5px var(--mono);letter-spacing:1px;padding:3px 9px;border-radius:3px;white-space:nowrap}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--mut);
+    text-align:left;padding:10px 14px;border-bottom:1px solid var(--line)}
+  td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  .mono{font-family:var(--mono);font-size:12px;color:var(--mut)}
+  pre{background:#0A0F1A;border:1px solid var(--line);border-radius:6px;padding:13px;
+    font:11.5px/1.6 var(--mono);color:#9FD0A8;overflow-x:auto;margin:10px 0 0}
+  .note{border:1px solid #FFB02E55;background:#FFB02E10;border-radius:6px;
+    padding:10px 12px;font-size:12px;color:#EAD9AE;line-height:1.55;margin-top:12px}
+  .note b{color:var(--amber)}
+  .msg{margin-top:10px;font-size:13px;padding:10px 12px;border-radius:5px;display:none}
+  .msg.ok{display:block;background:#3DDC9714;border:1px solid #3DDC9755;color:var(--green)}
+  .msg.err{display:block;background:#FF5D5D14;border:1px solid #FF5D5D55;color:var(--red)}
+  .toggle{border-radius:20px;padding:8px 18px;font-size:12px;letter-spacing:.5px}
+  .log{font:12px var(--mono);color:var(--mut);padding:6px 16px;border-bottom:1px solid var(--line)}
+  .log:last-child{border-bottom:none}
+  td.detail{max-width:480px;word-break:break-word;color:var(--mut);font-family:var(--mono);font-size:11px}
+  .mode-badge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+  .mode-badge.MANUAL{background:#1c2c44;color:#8ab4ff}
+  .mode-badge.AUTO{background:#2a1c44;color:#c79bff}
+  .tabs{display:flex;gap:4px;padding:10px 22px 0;background:var(--panel);border-bottom:1px solid var(--line)}
+  .tab{padding:9px 18px;border:1px solid var(--line);border-bottom:none;border-radius:8px 8px 0 0;
+    background:var(--panel2);color:var(--mut);cursor:pointer;font-size:13px;letter-spacing:.3px}
+  .tab.active{background:var(--bg);color:var(--text);font-weight:700}
+  .view{display:none}
+  .view.active{display:block}
+  @media(max-width:760px){ .hide-sm{display:none} td,th{padding:9px 8px} }
 </style>
 </head>
 <body>
 
 <header>
   <div>
-    <h1>EWB Control Tower</h1>
-    <div class="sub">E-way bill expiry monitoring &amp; extension</div>
+    <div class="eyebrow">EWB · CONTROL TOWER</div>
+    <h1>E-way bill expiry desk</h1>
+    <div class="mono" id="mode" style="margin-top:4px"></div>
   </div>
-  <div class="auto-toggle">
-    <span>Auto-extend</span>
-    <label class="switch">
-      <input type="checkbox" id="autoToggle">
-      <span class="slider"></span>
-    </label>
+  <div class="stats">
+    <div class="stat"><b style="color:var(--red)" id="st-window">0</b><span>Window open</span></div>
+    <div class="stat"><b style="color:var(--amber)" id="st-soon">0</b><span>Expiring ≤48h</span></div>
+    <div class="stat"><b style="color:var(--dim)" id="st-missed">0</b><span>Missed</span></div>
+    <div class="stat"><b class="mono" id="clock" style="color:var(--mut);font-weight:500"></b><span>IST</span></div>
   </div>
 </header>
 
 <div class="tabs">
   <div class="tab active" data-view="dashboard">Dashboard</div>
-  <div class="tab" data-view="test">Test / Ops</div>
   <div class="tab" data-view="logs">Audit Log</div>
 </div>
 
-<main>
+<div class="wrap">
 
-  <section id="view-dashboard" class="view active">
-    <div class="buckets" id="buckets"></div>
-  </section>
+<div id="view-dashboard" class="view active">
 
-  <section id="view-test" class="view">
-    <div class="panel">
-      <h3>Lookup</h3>
-      <div class="search-row">
-        <input id="lookupQ" placeholder="Invoice no or EWB no (e.g. INV-1002)">
-        <button class="btn" id="lookupBtn">Lookup</button>
+  <!-- TEST SCREEN -->
+  <div class="card">
+    <h2>Test screen — lookup &amp; extend</h2>
+    <div class="pad">
+      <div class="row" style="align-items:flex-end">
+        <div style="flex:2">
+          <label>Invoice no / EWB no</label>
+          <input id="q" placeholder="e.g. INV-1002 or 321008990102">
+        </div>
+        <div style="flex:0"><button class="btn-blue" onclick="lookup()">Get validity</button></div>
+      </div>
+      <div class="msg" id="lk-msg"></div>
+
+      <div id="detail" style="display:none">
+        <div class="row" style="margin-top:16px">
+          <div><label>EWB no</label><input id="d-ewb" readonly></div>
+          <div><label>Vehicle</label><input id="d-veh" readonly></div>
+          <div><label>Valid until</label><input id="d-exp" readonly></div>
+          <div><label>Status</label><input id="d-status" readonly></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div><label>Current location (default: FROM ship-point)</label><input id="d-place"></div>
+          <div><label>Pincode</label><input id="d-pin"></div>
+          <div><label>Remaining distance (km)</label><input id="d-km" type="number"></div>
+          <div><label>Remarks (reason 99 — Others)</label><input id="d-rem" value="Transit delay"></div>
+        </div>
+        <div class="note"><b>Compliance note:</b> we have no live vehicle GPS feed. Origin-as-default
+          above is a no-GPS fallback only — always correct it to the vehicle's actual current position
+          before extending once it has left origin. Declaring the origin as current location while the
+          truck is mid-route is a misdeclaration risk. Extension only works within ±8h of validUpto.</div>
+        <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+          <button class="btn-green" id="btn-ext" onclick="extend()">Push extension</button>
+          <span class="mono" id="d-grant"></span>
+        </div>
+        <div class="msg" id="ext-msg"></div>
+        <label style="margin-top:16px">EXTENDVALIDITY payload that will be sent</label>
+        <pre id="d-payload"></pre>
       </div>
     </div>
+  </div>
 
-    <div class="panel" id="extendPanel" style="display:none;">
-      <h3 id="extendTitle">Shipment</h3>
-      <div id="extendSummary" style="font-size:13px;color:var(--muted);"></div>
-
-      <div class="warning">
-        <strong>No-GPS policy:</strong> we have no live vehicle GPS feed. Location,
-        pincode and remaining distance below default to the shipment's FROM
-        ship-point and full route distance (reason code 99 &mdash; "Transit delay").
-        These are DEFAULTS ONLY &mdash; always correct them to the vehicle's actual
-        current position before extending if it has left origin. Declaring the
-        origin as current location while the truck is mid-route is a
-        misdeclaration risk.
+  <!-- AUTO TRIGGER -->
+  <div class="card">
+    <h2>Auto-extend trigger</h2>
+    <div class="pad" style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between">
+      <div style="font-size:13px;color:var(--mut);line-height:1.5;max-width:720px">
+        <b style="color:var(--text)">Rule:</b> IF IOD ≠ CLOSED AND now is inside the ±8h window →
+        fire EXTENDVALIDITY automatically (location = FROM ship-point, distance = full route,
+        reason 99 "Transit delay"). The watcher scans every <span id="auto-int">—</span>s.
+        Close an IOD below to see the trigger skip that shipment.
       </div>
-
-      <div class="field-grid">
-        <div><label>Current place</label><input id="fPlace"></div>
-        <div><label>Current pincode</label><input id="fPin"></div>
-        <div><label>Remaining distance (km)</label><input id="fKm" type="number" min="1"></div>
-        <div><label>Remarks</label><input id="fRemarks"></div>
-      </div>
-
-      <div style="margin-top:14px; display:flex; gap:8px;">
-        <button class="btn" id="extendBtn">Extend validity</button>
-        <button class="btn secondary" id="iodOpenBtn">Mark IOD OPEN</button>
-        <button class="btn secondary" id="iodClosedBtn">Mark IOD CLOSED</button>
-      </div>
-
-      <div id="resultMsg"></div>
+      <button class="toggle btn-ghost" id="auto-btn" onclick="toggleAuto()">AUTO-EXTEND OFF</button>
     </div>
-  </section>
+  </div>
 
-  <section id="view-logs" class="view">
-    <div class="panel">
-      <h3>Audit trail</h3>
-      <table>
-        <thead><tr><th>When</th><th>Mode</th><th>Invoice</th><th>EWB</th><th>Detail</th></tr></thead>
-        <tbody id="logsBody"></tbody>
-      </table>
+  <!-- DASHBOARD -->
+  <div class="card">
+    <h2>All shipments</h2>
+    <div style="overflow-x:auto">
+    <table id="tbl">
+      <thead><tr>
+        <th>Invoice / EWB</th><th class="hide-sm">Route</th><th>Valid until</th>
+        <th>Time left</th><th>IOD</th><th>Status</th><th></th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
     </div>
-  </section>
+  </div>
 
-</main>
+</div>
+
+<div id="view-logs" class="view">
+  <!-- LOG -->
+  <div class="card">
+    <h2>Audit trail</h2>
+    <div style="overflow-x:auto">
+    <table id="logTbl">
+      <thead><tr><th>When</th><th>Mode</th><th>Invoice</th><th>EWB</th><th>Detail</th></tr></thead>
+      <tbody id="logs"></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+</div>
 
 <script>
-const BUCKETS = [
-  {key: "WINDOW", label: "Extend now (in window)", color: "var(--red)"},
-  {key: "SOON",   label: "Soon (≤24h)",         color: "var(--amber)"},
-  {key: "WATCH",  label: "Watch (≤48h)",         color: "var(--yellow)"},
-  {key: "MISSED", label: "Missed — fresh EWB needed", color: "var(--grey)"},
-  {key: "OK",     label: "OK",                    color: "var(--green)"},
-  {key: "CLOSED", label: "Closed (IOD done)",      color: "var(--border)"},
-];
+const COLORS={WINDOW:'var(--red)',SOON:'var(--amber)',WATCH:'#E8D44D',
+              OK:'var(--green)',MISSED:'var(--dim)',CLOSED:'var(--blue)'};
+const LABELS={WINDOW:'WINDOW OPEN',SOON:'EXPIRES <24H',WATCH:'EXPIRES <48H',
+              OK:'ON TRACK',MISSED:'WINDOW MISSED',CLOSED:'IOD CLOSED'};
+let current=null;
 
-let currentShipment = null;
+const $=id=>document.getElementById(id);
 
-function fmtTs(ts) {
+function fmtTs(ts){
   if (!ts) return "—";
-  return new Date(ts * 1000).toLocaleString();
+  return new Date(ts * 1000).toLocaleString('en-IN',
+    {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:false});
+}
+function fmtDelta(sec){
+  const n = sec < 0; sec = Math.abs(sec);
+  return `${n?'-':''}${Math.floor(sec/3600)}h ${String(Math.floor(sec%3600/60)).padStart(2,'0')}m`;
 }
 
-function fmtCountdown(expiryTs, now) {
-  const diff = expiryTs - now;
-  const abs = Math.abs(diff);
-  const h = Math.floor(abs / 3600);
-  const m = Math.floor((abs % 3600) / 60);
-  return (diff < 0 ? "-" : "") + h + "h " + m + "m";
-}
-
-async function loadShipments() {
-  const res = await fetch("/api/shipments");
-  const data = await res.json();
-  document.getElementById("autoToggle").checked = data.auto_extend;
-
-  const byBucket = {};
-  BUCKETS.forEach(b => byBucket[b.key] = []);
-  data.shipments.forEach(s => { (byBucket[s.status] ||= []).push(s); });
-
-  const container = document.getElementById("buckets");
-  container.innerHTML = "";
-  BUCKETS.forEach(b => {
-    const items = byBucket[b.key] || [];
-    const bucketEl = document.createElement("div");
-    bucketEl.className = "bucket";
-    bucketEl.innerHTML = `<h2><span class="dot" style="background:${b.color}"></span>${b.label} <span class="count">(${items.length})</span></h2>`;
-    const cardsEl = document.createElement("div");
-    cardsEl.className = "cards";
-    if (items.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "empty";
-      empty.textContent = "None";
-      bucketEl.appendChild(empty);
-    } else {
-      items.forEach(s => {
-        const card = document.createElement("div");
-        card.className = "card " + s.status;
-        card.innerHTML = `
-          <div class="row1"><span>${s.invoice_no}</span><span>${s.status}</span></div>
-          <div class="route">${s.from_place} &rarr; ${s.to_place}</div>
-          <div class="meta"><span>EWB ${s.ewb_no}</span><span>${s.vehicle_no}</span></div>
-          <div class="meta"><span>Expiry: ${fmtTs(s.expiry_ts)}</span><span>${fmtCountdown(s.expiry_ts, data.now)}</span></div>
-          <div class="meta"><span>Extensions: ${s.extensions}</span><span>IOD: ${s.iod_status}</span></div>
-        `;
-        const btn = document.createElement("button");
-        btn.textContent = "Open in Test / Ops";
-        btn.onclick = () => {
-          switchView("test");
-          document.getElementById("lookupQ").value = s.invoice_no;
-          runLookup();
-        };
-        card.appendChild(btn);
-        cardsEl.appendChild(card);
-      });
-      bucketEl.appendChild(cardsEl);
-    }
-    container.appendChild(bucketEl);
-  });
-}
-
-async function runLookup() {
-  const q = document.getElementById("lookupQ").value.trim();
-  if (!q) return;
-  const res = await fetch("/api/lookup?q=" + encodeURIComponent(q));
-  const data = await res.json();
-  const panel = document.getElementById("extendPanel");
-  document.getElementById("resultMsg").innerHTML = "";
-  if (!data.ok) {
-    panel.style.display = "none";
-    alert(data.message || "Not found");
-    return;
-  }
-  currentShipment = data.shipment;
-  panel.style.display = "block";
-  document.getElementById("extendTitle").textContent =
-    `${data.shipment.invoice_no} — EWB ${data.shipment.ewb_no} [${data.status}]`;
-  document.getElementById("extendSummary").textContent =
-    `${data.shipment.from_place} → ${data.shipment.to_place} · ${data.shipment.distance_km} km · ` +
-    `valid upto ${fmtTs(data.shipment.expiry_ts)} · vehicle ${data.shipment.vehicle_no} · IOD ${data.shipment.iod_status}`;
-
-  document.getElementById("fPlace").value = data.shipment.from_place;
-  document.getElementById("fPin").value = data.shipment.from_pincode;
-  document.getElementById("fKm").value = data.shipment.distance_km;
-  document.getElementById("fRemarks").value = "Transit delay";
-}
-
-async function runExtend() {
-  if (!currentShipment) return;
-  const body = {
-    q: currentShipment.invoice_no,
-    place: document.getElementById("fPlace").value,
-    pin: document.getElementById("fPin").value,
-    remaining_km: parseFloat(document.getElementById("fKm").value),
-    remarks: document.getElementById("fRemarks").value,
+// Client-side preview only — mirrors app.py's build_payload() for ops visibility.
+// The actual request sent by extend() below is just {q, place, pin, remaining_km, remarks};
+// the server (single source of truth, CLAUDE.md §3) constructs the real EXTENDVALIDITY body.
+function buildPreviewPayload(s, o) {
+  return {
+    ewbNo: /^\d+$/.test(s.ewb_no) ? parseInt(s.ewb_no) : s.ewb_no,
+    vehicleNo: s.vehicle_no,
+    fromPlace: o.place, fromState: s.from_state,
+    fromPincode: parseInt(o.pin || s.from_pincode),
+    remainingDistance: o.km,
+    transMode: '1', transDocNo: '', transDocDate: '',
+    consignmentStatus: 'M', transitType: '',
+    addressLine1: '', addressLine2: '', addressLine3: '',
+    extnRsnCode: 99, extnRemarks: o.remarks,
   };
-  const res = await fetch("/api/extend", {
-    method: "POST", headers: {"Content-Type": "application/json"},
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  const msgEl = document.getElementById("resultMsg");
-  msgEl.className = "result-msg " + (data.ok ? "ok" : "err");
-  msgEl.textContent = data.message + (data.ok ? ` — new validity: ${fmtTs(data.shipment.expiry_ts)}` : "");
-  if (data.ok) {
-    currentShipment = data.shipment;
-    document.getElementById("extendTitle").textContent =
-      `${data.shipment.invoice_no} — EWB ${data.shipment.ewb_no} [${data.status}]`;
-  }
-  loadShipments();
 }
 
-async function setIod(status) {
-  if (!currentShipment) return;
-  await fetch("/api/iod", {
-    method: "POST", headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({invoice_no: currentShipment.invoice_no, status}),
-  });
-  runLookup();
-  loadShipments();
-}
-
-async function loadLogs() {
-  const res = await fetch("/api/logs");
-  const data = await res.json();
-  const body = document.getElementById("logsBody");
-  body.innerHTML = "";
-  data.logs.forEach(l => {
-    const tr = document.createElement("tr");
+async function refresh(){
+  const r = await fetch('/api/shipments'); const d = await r.json();
+  $('mode').textContent = 'backend: ' + d.mode;
+  const tb = document.querySelector('#tbl tbody'); tb.innerHTML = '';
+  let w=0, s48=0, miss=0;
+  for (const s of d.shipments) {
+    if (s.status === 'WINDOW') w++;
+    if (s.status === 'SOON' || s.status === 'WATCH') s48++;
+    if (s.status === 'MISSED') miss++;
+    const secondsToExpiry = s.expiry_ts - d.now;
+    const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${fmtTs(l.ts)}</td>
-      <td><span class="mode-badge ${l.mode}">${l.mode}</span></td>
-      <td>${l.invoice_no || ""}</td>
-      <td>${l.ewb_no || ""}</td>
-      <td class="detail">${l.detail || ""}</td>
-    `;
-    body.appendChild(tr);
-  });
+      <td><b>${s.invoice_no}</b>${s.extensions ? ` <span class="mono" style="color:var(--green)">EXT ×${s.extensions}</span>` : ''}
+          <div class="mono">${s.ewb_no} · ${s.vehicle_no}</div></td>
+      <td class="hide-sm">${s.from_place} → ${s.to_place}
+          <div class="mono">${s.distance_km} km</div></td>
+      <td class="mono">${fmtTs(s.expiry_ts)}</td>
+      <td class="mono" style="color:${secondsToExpiry<0?'var(--red)':'var(--text)'}">
+          ${secondsToExpiry>=0?'in ':''}${fmtDelta(secondsToExpiry)}${secondsToExpiry<0?' ago':''}</td>
+      <td><button class="btn-ghost" style="padding:4px 10px;font-size:11px"
+            onclick="setIod('${s.invoice_no}','${s.iod_status==='OPEN'?'CLOSED':'OPEN'}')">
+            ${s.iod_status}</button></td>
+      <td><span class="chip" style="color:${COLORS[s.status]};border:1px solid ${COLORS[s.status]};
+            background:transparent">${LABELS[s.status]}</span></td>
+      <td>${s.status==='WINDOW'
+            ?`<button class="btn-green" style="padding:6px 12px;font-size:12px"
+               onclick="quickPick('${s.invoice_no}')">Extend</button>`
+            :s.status==='MISSED'?'<span class="mono" style="font-size:11px">fresh EWB needed</span>':''}</td>`;
+    tb.appendChild(tr);
+  }
+  $('st-window').textContent = w; $('st-soon').textContent = s48; $('st-missed').textContent = miss;
+
+  const a = await (await fetch('/api/auto')).json();
+  $('auto-int').textContent = a.interval_seconds;
+  const btn = $('auto-btn');
+  btn.textContent = a.enabled ? 'AUTO-EXTEND ON' : 'AUTO-EXTEND OFF';
+  btn.className = 'toggle ' + (a.enabled ? 'btn-green' : 'btn-ghost');
 }
 
-function switchView(name) {
-  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.view === name));
-  document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === "view-" + name));
-  if (name === "logs") loadLogs();
-  if (name === "dashboard") loadShipments();
+async function loadLogs(){
+  const d = await (await fetch('/api/logs')).json();
+  $('logs').innerHTML = d.logs.length
+    ? d.logs.map(l => `<tr>
+        <td class="mono">${fmtTs(l.ts)}</td>
+        <td><span class="mode-badge ${l.mode}">${l.mode}</span></td>
+        <td>${l.invoice_no || ''}</td>
+        <td>${l.ewb_no || ''}</td>
+        <td class="detail">${l.detail || ''}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="5" class="mono">No extensions yet.</td></tr>';
 }
 
-document.querySelectorAll(".tab").forEach(t => t.onclick = () => switchView(t.dataset.view));
-document.getElementById("lookupBtn").onclick = runLookup;
-document.getElementById("lookupQ").addEventListener("keydown", e => { if (e.key === "Enter") runLookup(); });
-document.getElementById("extendBtn").onclick = runExtend;
-document.getElementById("iodOpenBtn").onclick = () => setIod("OPEN");
-document.getElementById("iodClosedBtn").onclick = () => setIod("CLOSED");
-document.getElementById("autoToggle").onchange = async (e) => {
-  await fetch("/api/auto", {
-    method: "POST", headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({enabled: e.target.checked}),
-  });
-};
+function quickPick(inv){ $('q').value = inv; lookup(); window.scrollTo({top:0, behavior:'smooth'}); }
 
-loadShipments();
+async function lookup(){
+  const q = $('q').value.trim(); if (!q) return;
+  const m = $('lk-msg'); m.className = 'msg';
+  const r = await fetch('/api/lookup?q=' + encodeURIComponent(q)); const d = await r.json();
+  if (!d.ok) { m.className = 'msg err'; m.textContent = d.message; $('detail').style.display = 'none'; return; }
+  current = d.shipment; current.status = d.status;
+  $('detail').style.display = 'block';
+  const secondsToExpiry = current.expiry_ts - Math.floor(Date.now() / 1000);
+  $('d-ewb').value = current.ewb_no; $('d-veh').value = current.vehicle_no;
+  $('d-exp').value = fmtTs(current.expiry_ts) +
+    `  (${secondsToExpiry>=0?'in ':''}${fmtDelta(secondsToExpiry)}${secondsToExpiry<0?' ago':''})`;
+  $('d-status').value = LABELS[current.status]; $('d-status').style.color = COLORS[current.status];
+  $('d-place').value = current.from_place; $('d-pin').value = current.from_pincode;
+  $('d-km').value = current.distance_km; $('d-rem').value = 'Transit delay';
+  $('btn-ext').disabled = current.status !== 'WINDOW';
+  updatePayload();
+}
+
+function updatePayload(){
+  if (!current) return;
+  const km = parseInt($('d-km').value || 0), days = Math.max(1, Math.ceil(km / 200));
+  $('d-grant').textContent = `will grant ~${days} day${days>1?'s':''} (1 day / 200 km)`;
+  const p = buildPreviewPayload(current, {place: $('d-place').value, pin: $('d-pin').value, km, remarks: $('d-rem').value});
+  $('d-payload').textContent = JSON.stringify(p, null, 2);
+}
+['d-place','d-pin','d-km','d-rem'].forEach(id => document.addEventListener('input', e => {
+  if (e.target.id === id) updatePayload();
+}));
+
+async function extend(){
+  const m = $('ext-msg'); m.className = 'msg'; $('btn-ext').disabled = true;
+  $('btn-ext').textContent = 'Calling API…';
+  const r = await fetch('/api/extend', {method:'POST', headers:{'content-type':'application/json'},
+    body: JSON.stringify({q: current.invoice_no, place: $('d-place').value, pin: $('d-pin').value,
+      remaining_km: parseInt($('d-km').value || 0), remarks: $('d-rem').value})});
+  const d = await r.json();
+  $('btn-ext').textContent = 'Push extension';
+  if (d.ok) { m.className = 'msg ok'; m.textContent = '✓ ' + (d.message || 'Extended') + '. New validity: ' + fmtTs(d.shipment.expiry_ts); }
+  else      { m.className = 'msg err'; m.textContent = '✗ ' + d.message; }
+  await refresh(); if (current) lookup();
+}
+
+async function setIod(inv, status){
+  await fetch('/api/iod', {method:'POST', headers:{'content-type':'application/json'},
+    body: JSON.stringify({invoice_no: inv, status})});
+  refresh();
+}
+
+async function toggleAuto(){
+  const cur = $('auto-btn').textContent.includes('ON');
+  await fetch('/api/auto', {method:'POST', headers:{'content-type':'application/json'},
+    body: JSON.stringify({enabled: !cur})});
+  refresh();
+}
+
+function switchView(name){
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === name));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
+  if (name === 'logs') loadLogs();
+  if (name === 'dashboard') refresh();
+}
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => switchView(t.dataset.view));
+
+setInterval(() => { $('clock').textContent = new Date().toLocaleTimeString('en-IN', {hour12:false}); }, 1000);
 setInterval(() => {
-  if (document.getElementById("view-dashboard").classList.contains("active")) loadShipments();
-  if (document.getElementById("view-logs").classList.contains("active")) loadLogs();
+  if ($('view-dashboard').classList.contains('active')) refresh();
+  if ($('view-logs').classList.contains('active')) loadLogs();
 }, 15000);
+refresh();
 </script>
-
 </body>
 </html>

@@ -154,6 +154,7 @@ def api_shipments():
         "shipments": out,
         "auto_extend": db.get_setting("auto_extend", "0") == "1",
         "now": now,
+        "mode": config.EWB_API_MODE,
     }
 
 
@@ -210,7 +211,10 @@ def api_iod(req: IODRequest):
 
 @app.get("/api/auto")
 def api_auto_get():
-    return {"enabled": db.get_setting("auto_extend", "0") == "1"}
+    return {
+        "enabled": db.get_setting("auto_extend", "0") == "1",
+        "interval_seconds": config.AUTO_CHECK_INTERVAL_SECONDS,
+    }
 
 
 @app.post("/api/auto")
